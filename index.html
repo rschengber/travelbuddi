@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TravelBuddi</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Nunito+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --navy:#0D2D54;--blue:#4AB3E8;--blue-light:#E6F1FB;--blue-mid:#185FA5;
+  --green:#6DBE45;--green-dark:#3B6D11;--green-light:#EAF3DE;
+  --teal:#1D9E75;--teal-dark:#0F6E56;--teal-light:#E1F5EE;
+  --amber:#F5C518;--amber-dark:#854F0B;--amber-light:#FAEEDA;
+  --coral:#D85A30;--coral-dark:#993C1D;--coral-light:#FAECE7;
+  --purple:#7F77DD;--purple-dark:#534AB7;--purple-light:#EEEDFE;
+  --pink:#D4537E;--pink-dark:#993556;--pink-light:#FBEAF0;
+  --bg:#F7F8FA;--surface:#FFFFFF;--border:rgba(13,45,84,0.1);--border-mid:rgba(13,45,84,0.18);
+  --text:#0D2D54;--text-2:#4A6080;--text-3:#8A9BB0;
+  --radius:10px;--radius-lg:14px;--shadow:0 1px 3px rgba(13,45,84,0.08);--shadow-md:0 4px 12px rgba(13,45,84,0.1);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font-family:'Nunito Sans',sans-serif;background:var(--bg);color:var(--text);}
+#app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+#topbar{background:var(--navy);padding:0 20px;display:flex;align-items:center;gap:14px;height:54px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.2);}
+#logo-txt{font-family:'Nunito',sans-serif;font-size:18px;font-weight:700;color:white;letter-spacing:-0.01em;}
+#logo-txt span{color:var(--amber);}
+#trip-name-wrap{flex:1;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.08);border-radius:8px;padding:0 12px;height:34px;border:1px solid rgba(255,255,255,0.12);}
+#trip-name{background:none;border:none;outline:none;color:white;font-size:13px;font-family:'Nunito Sans',sans-serif;flex:1;}
+#trip-name::placeholder{color:rgba(255,255,255,0.4);}
+.top-btn{display:flex;align-items:center;gap:6px;padding:0 14px;height:32px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:'Nunito',sans-serif;transition:all 0.15s;}
+#save-btn{background:var(--amber);color:var(--navy);}
+#save-btn:hover{background:#e8b800;}
+#nav{background:var(--surface);border-bottom:1px solid var(--border);display:flex;padding:0 16px;flex-shrink:0;overflow-x:auto;gap:2px;}
+#nav::-webkit-scrollbar{display:none;}
+.nav-item{display:flex;align-items:center;gap:7px;padding:0 14px;height:46px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text-3);border-bottom:2.5px solid transparent;white-space:nowrap;transition:all 0.15s;font-family:'Nunito',sans-serif;}
+.nav-item:hover{color:var(--text-2);}
+.nav-item.active{color:var(--navy);border-bottom-color:var(--navy);}
+.nav-icon-wrap{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.nav-item.active .nav-icon-wrap{transform:scale(1.05);}
+.nav-badge{font-size:10px;background:var(--coral);color:white;border-radius:20px;padding:1px 6px;min-width:18px;text-align:center;font-weight:700;}
+#body{display:flex;flex:1;overflow:hidden;}
+#map-col{flex:1;position:relative;display:none;}
+#map-col.visible{display:flex;flex-direction:column;}
+#map{flex:1;}
+#map-hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:7px 16px;font-size:12px;color:var(--text-2);pointer-events:none;z-index:500;box-shadow:var(--shadow-md);font-weight:500;}
+#panel{width:280px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+#panel.full{width:100%;}
+#search-area{padding:12px;border-bottom:1px solid var(--border);}
+#search-wrap{position:relative;}
+#search-input{width:100%;padding:8px 12px 8px 36px;border:1px solid var(--border-mid);border-radius:var(--radius);font-size:13px;background:var(--bg);color:var(--text);outline:none;font-family:'Nunito Sans',sans-serif;transition:border-color 0.15s;}
+#search-input:focus{border-color:var(--blue);}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:0.4;}
+#search-results{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border-mid);border-radius:var(--radius);overflow:hidden;display:none;z-index:999;box-shadow:var(--shadow-md);}
+.sr{padding:9px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border);color:var(--text-2);transition:background 0.1s;}
+.sr:last-child{border-bottom:none;}
+.sr:hover{background:var(--bg);}
+#panel-content{flex:1;overflow-y:auto;padding:10px 12px;}
+#panel-content::-webkit-scrollbar{width:4px;}
+#panel-content::-webkit-scrollbar-thumb{background:var(--border-mid);border-radius:2px;}
+#dist-bar{padding:7px 12px;font-size:12px;color:var(--text-2);border-top:1px solid var(--border);display:none;font-weight:500;}
+#panel-footer{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px;}
+.fp-btn{flex:1;padding:8px;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;font-family:'Nunito',sans-serif;transition:all 0.15s;}
+#clear-btn{border:1px solid var(--border-mid);background:none;color:var(--text-2);}
+#clear-btn:hover{background:var(--bg);}
+#ai-btn{border:1.5px solid var(--purple);background:none;color:var(--purple-dark);display:flex;align-items:center;justify-content:center;gap:5px;}
+#ai-btn:hover{background:var(--purple-light);}
+.stop-item{display:flex;align-items:flex-start;gap:8px;padding:9px;border-radius:var(--radius);margin-bottom:5px;background:var(--bg);cursor:grab;border:1px solid transparent;transition:all 0.15s;}
+.stop-item:hover{border-color:var(--border-mid);background:white;}
+.stop-num{width:24px;height:24px;border-radius:50%;background:var(--blue-mid);color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-family:'Nunito',sans-serif;}
+.stop-body{flex:1;min-width:0;}
+.stop-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.stop-del{width:22px;height:22px;border:none;background:none;color:var(--text-3);cursor:pointer;font-size:16px;border-radius:5px;flex-shrink:0;transition:all 0.1s;line-height:1;}
+.stop-del:hover{color:var(--coral-dark);background:var(--coral-light);}
+.stop-acts{display:flex;gap:5px;margin-top:5px;}
+.mini-btn{font-size:11px;padding:3px 9px;border:1px solid var(--border-mid);border-radius:20px;background:none;cursor:pointer;color:var(--text-2);font-weight:600;transition:all 0.15s;font-family:'Nunito',sans-serif;}
+.mini-btn:hover{border-color:var(--blue);color:var(--blue-mid);}
+.poi-list{margin-top:7px;}
+.poi-item{display:flex;align-items:center;gap:7px;padding:5px 0;border-top:1px solid var(--border);}
+.poi-emoji{font-size:14px;flex-shrink:0;}
+.poi-name{font-size:12px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.poi-type{font-size:10px;color:var(--text-3);}
+.poi-add{font-size:11px;padding:3px 8px;border:1.5px solid var(--teal);border-radius:20px;background:none;color:var(--teal-dark);cursor:pointer;font-weight:700;transition:all 0.15s;}
+.poi-add:hover{background:var(--teal-light);}
+.empty{padding:40px 10px;text-align:center;font-size:13px;color:var(--text-3);line-height:2;}
+.sec-label{font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;margin:14px 0 6px;font-family:'Nunito',sans-serif;}
+.sec-label:first-child{margin-top:2px;}
+.progress-bar{height:5px;background:var(--bg);border-radius:3px;margin-bottom:4px;overflow:hidden;border:1px solid var(--border);}
+.progress-fill{height:100%;border-radius:3px;transition:width 0.4s ease;}
+.prog-label{font-size:11px;color:var(--text-3);margin-bottom:12px;font-weight:500;}
+.check-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--radius);margin-bottom:4px;background:var(--bg);border:1px solid transparent;transition:all 0.15s;}
+.check-item:hover{border-color:var(--border-mid);background:white;}
+.check-item input[type=checkbox]{width:16px;height:16px;flex-shrink:0;cursor:pointer;accent-color:var(--teal);}
+.check-label{flex:1;font-size:13px;cursor:pointer;font-weight:500;transition:all 0.2s;}
+.check-label.done{text-decoration:line-through;color:var(--text-3);}
+.check-del{width:20px;height:20px;border:none;background:none;color:var(--text-3);cursor:pointer;font-size:14px;border-radius:5px;flex-shrink:0;}
+.check-del:hover{color:var(--coral-dark);}
+.add-row{display:flex;gap:6px;margin-top:10px;}
+.add-sel{padding:7px 8px;border:1px solid var(--border-mid);border-radius:var(--radius);font-size:12px;background:var(--bg);color:var(--text);outline:none;font-family:'Nunito Sans',sans-serif;max-width:110px;}
+.add-inp{flex:1;padding:7px 10px;border:1px solid var(--border-mid);border-radius:var(--radius);font-size:13px;background:var(--bg);color:var(--text);outline:none;font-family:'Nunito Sans',sans-serif;transition:border-color 0.15s;}
+.add-inp:focus{border-color:var(--blue);}
+.add-btn{padding:7px 14px;border:1.5px solid var(--teal);border-radius:var(--radius);background:none;color:var(--teal-dark);font-size:13px;cursor:pointer;font-weight:700;transition:all 0.15s;font-family:'Nunito',sans-serif;}
+.add-btn:hover{background:var(--teal-light);}
+.doc-card{background:var(--bg);border-radius:var(--radius);padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;}
+.doc-card:hover{border-color:var(--border-mid);background:white;}
+.doc-icon-wrap{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.doc-info{flex:1;min-width:0;}
+.doc-name{font-size:13px;font-weight:600;}
+.doc-note{font-size:11px;color:var(--text-3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.doc-status-sel{font-size:11px;border:1px solid var(--border-mid);border-radius:6px;background:var(--bg);color:var(--text);padding:3px 5px;cursor:pointer;font-family:'Nunito Sans',sans-serif;}
+.status-pill{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700;white-space:nowrap;}
+.s-ok{background:var(--teal-light);color:var(--teal-dark);}
+.s-warn{background:var(--amber-light);color:var(--amber-dark);}
+.s-none{background:var(--bg);color:var(--text-3);border:1px solid var(--border-mid);}
+.ver-card{background:var(--bg);border-radius:var(--radius);padding:11px;margin-bottom:7px;border:1px solid var(--border);}
+.ver-name{font-size:13px;font-weight:700;margin-bottom:2px;}
+.ver-meta{font-size:11px;color:var(--text-3);margin-bottom:5px;}
+.ver-stops{font-size:11px;color:var(--text-2);margin-bottom:8px;line-height:1.5;}
+.ver-acts{display:flex;gap:6px;}
+.v-btn{font-size:11px;padding:4px 12px;border-radius:20px;cursor:pointer;font-weight:600;transition:all 0.15s;font-family:'Nunito',sans-serif;}
+.v-load{border:1.5px solid var(--blue-mid);background:none;color:var(--blue-mid);}
+.v-load:hover{background:var(--blue-light);}
+.v-del{border:1px solid var(--border-mid);background:none;color:var(--text-3);}
+.v-del:hover{border-color:var(--coral);color:var(--coral-dark);}
+.ai-card{border-radius:var(--radius);padding:11px;margin-bottom:8px;border-left:3px solid;}
+.ai-title{font-size:12px;font-weight:700;margin-bottom:4px;}
+.ai-text{font-size:12px;color:var(--text-2);line-height:1.6;}
+.modal-bg{position:fixed;inset:0;background:rgba(13,45,84,0.4);display:none;align-items:center;justify-content:center;z-index:2000;backdrop-filter:blur(2px);}
+.modal-bg.open{display:flex;}
+.modal{background:var(--surface);border-radius:var(--radius-lg);padding:22px;width:260px;box-shadow:var(--shadow-md);}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:14px;font-family:'Nunito',sans-serif;color:var(--navy);}
+.modal input{width:100%;padding:9px 12px;border:1px solid var(--border-mid);border-radius:var(--radius);font-size:13px;background:var(--bg);color:var(--text);outline:none;font-family:'Nunito Sans',sans-serif;margin-bottom:14px;transition:border-color 0.15s;}
+.modal input:focus{border-color:var(--blue);}
+.modal-btns{display:flex;gap:8px;}
+.modal-btns button{flex:1;padding:9px;border-radius:var(--radius);font-size:13px;cursor:pointer;font-family:'Nunito',sans-serif;font-weight:700;}
+.m-cancel{border:1px solid var(--border-mid);background:none;color:var(--text-2);}
+.m-ok{border:none;background:var(--navy);color:white;}
+.m-ok:hover{background:var(--blue-mid);}
+.drag-over{outline:2px dashed var(--blue);outline-offset:2px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div id="logo-txt">Travel<span>Buddi</span></div>
+    <div id="trip-name-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="opacity:0.5;flex-shrink:0;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      <input id="trip-name" type="text" placeholder="Reisename eingeben..."/>
+    </div>
+    <button class="top-btn" id="save-btn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Speichern
+    </button>
+  </div>
+  <div id="nav">
+    <div class="nav-item active" data-mod="route">
+      <div class="nav-icon-wrap" style="background:var(--blue-light);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--blue-mid)" stroke-width="2" stroke-linecap="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+      </div>Route
+    </div>
+    <div class="nav-item" data-mod="activities">
+      <div class="nav-icon-wrap" style="background:var(--pink-light);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--pink-dark)" stroke-width="2" stroke-linecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      </div>Aktivitäten
+    </div>
+    <div class="nav-item" data-mod="pack">
+      <div class="nav-icon-wrap" style="background:var(--amber-light);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--amber-dark)" stroke-width="2" stroke-linecap="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      </div>Packliste
+    </div>
+    <div class="nav-item" data-mod="todos">
+      <div class="nav-icon-wrap" style="background:var(--green-light);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--green-dark)" stroke-width="2" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      </div>To-Dos
+    </div>
+    <div class="nav-item" data-mod="docs">
+      <div class="nav-icon-wrap" style="background:var(--coral-light);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--coral-dark)" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>Formalitäten
+    </div>
+    <div class="nav-item" data-mod="versions">
+      <div class="nav-icon-wrap" style="background:var(--purple-light);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--purple-dark)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>Versionen
+    </div>
+  </div>
+  <div id="body">
+    <div id="map-col" class="visible">
+      <div id="map"></div>
+      <div id="map-hint">Auf die Karte klicken um Stop hinzuzufügen</div>
+    </div>
+    <div id="panel">
+      <div id="search-area">
+        <div id="search-wrap">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="search-input" type="text" placeholder="Ort suchen..."/>
+          <div id="search-results"></div>
+        </div>
+      </div>
+      <div id="panel-content"></div>
+      <div id="dist-bar"></div>
+      <div id="panel-footer">
+        <button class="fp-btn" id="clear-btn">Route löschen</button>
+        <button class="fp-btn" id="ai-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/></svg>
+          KI-Tipps
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">Route speichern</h3>
+    <input id="modal-input" type="text" placeholder="Name eingeben..."/>
+    <div class="modal-btns">
+      <button class="m-cancel" id="modal-cancel">Abbrechen</button>
+      <button class="m-ok" id="modal-ok">Speichern</button>
+    </div>
+  </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const LS=k=>JSON.parse(localStorage.getItem('tb2_'+k)||'null');
+const SS=(k,v)=>localStorage.setItem('tb2_'+k,JSON.stringify(v));
+let stops=LS('stops')||[],versions=LS('versions')||[];
+let packItems=LS('pack')||initPack();
+let todoItems=LS('todos')||initTodos();
+let actItems=LS('acts')||[];
+let docItems=LS('docs')||initDocs();
+let markers=[],routeLine=null,dragSrc=null,modalCb=null;
+function initPack(){return [{id:1,cat:'Kleidung',text:'T-Shirts',done:false},{id:2,cat:'Kleidung',text:'Hosen',done:false},{id:3,cat:'Kleidung',text:'Jacke / Regenjacke',done:false},{id:4,cat:'Hygiene',text:'Zahnbürste & Zahnpasta',done:false},{id:5,cat:'Hygiene',text:'Sonnencreme',done:false},{id:6,cat:'Hygiene',text:'Medikamente',done:false},{id:7,cat:'Dokumente',text:'Reisepass / Ausweis',done:false},{id:8,cat:'Dokumente',text:'Versicherungskarte',done:false},{id:9,cat:'Technik',text:'Ladekabel',done:false},{id:10,cat:'Technik',text:'Powerbank',done:false},{id:11,cat:'Technik',text:'Kopfhörer',done:false}];}
+function initTodos(){return [{id:1,cat:'Vor der Reise',text:'Unterkunft buchen',done:false},{id:2,cat:'Vor der Reise',text:'Flug / Bahn buchen',done:false},{id:3,cat:'Vor der Reise',text:'Reiseversicherung abschließen',done:false},{id:4,cat:'Vor der Reise',text:'Währung besorgen',done:false},{id:5,cat:'Unterwegs',text:'Check-in erledigen',done:false},{id:6,cat:'Unterwegs',text:'Lokale SIM / Roaming prüfen',done:false},{id:7,cat:'Nach der Reise',text:'Bilder sichern',done:false}];}
+function initDocs(){return [{id:1,name:'Reisepass',icon:'🪪',status:'none',note:'Gültigkeit prüfen',expires:''},{id:2,name:'Krankenversicherung',icon:'🏥',status:'none',note:'Auslandskrankenschein',expires:''},{id:3,name:'Visum',icon:'📋',status:'none',note:'Nur wenn erforderlich',expires:''},{id:4,name:'Impfungen',icon:'💉',status:'none',note:'Je nach Reiseland',expires:''},{id:5,name:'Reiseversicherung',icon:'🛡️',status:'none',note:'Gepäck & Storno',expires:''},{id:6,name:'Buchungsbestätigungen',icon:'📧',status:'none',note:'Hotel, Flug, Bahn',expires:''}];}
+const map=L.map('map',{zoomControl:true}).setView([48.5,10.5],6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+function mkIcon(n){return L.divIcon({className:'',html:`<div style="width:30px;height:30px;background:#185FA5;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);color:white;font-size:11px;font-weight:700;font-family:Nunito,sans-serif;">${n}</span></div>`,iconSize:[30,30],iconAnchor:[15,30]});}
+function poiEmoji(t){const m={restaurant:'🍽️',cafe:'☕',museum:'🏛️',park:'🌿',viewpoint:'👁️',hotel:'🏨',castle:'🏰',church:'⛪',bar:'🍺',attraction:'⭐'};for(const[k,v]of Object.entries(m))if(t&&t.includes(k))return v;return'📍';}
+function calcDist(a,b){const R=6371,dLat=(b[0]-a[0])*Math.PI/180,dLon=(b[1]-a[1])*Math.PI/180,x=Math.sin(dLat/2)**2+Math.cos(a[0]*Math.PI/180)*Math.cos(b[0]*Math.PI/180)*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+function openModal(title,def,cb){document.getElementById('modal-title').textContent=title;const inp=document.getElementById('modal-input');inp.value=def||'';document.getElementById('modal').classList.add('open');setTimeout(()=>inp.focus(),60);modalCb=cb;}
+document.getElementById('modal-ok').onclick=()=>{const v=document.getElementById('modal-input').value.trim();document.getElementById('modal').classList.remove('open');if(modalCb)modalCb(v);};
+document.getElementById('modal-cancel').onclick=()=>document.getElementById('modal').classList.remove('open');
+document.getElementById('modal-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('modal-ok').click();if(e.key==='Escape')document.getElementById('modal-cancel').click();});
+function updateBadges(){document.querySelectorAll('.nav-item').forEach(n=>{n.querySelector('.nav-badge')?.remove();const m=n.dataset.mod;let c=0;if(m==='route')c=stops.length;if(m==='pack')c=packItems.filter(i=>!i.done).length;if(m==='todos')c=todoItems.filter(i=>!i.done).length;if(m==='activities')c=actItems.filter(i=>!i.done).length;if(c>0){const b=document.createElement('span');b.className='nav-badge';b.textContent=c;n.appendChild(b);}});}
+function renderMap(){
+  markers.forEach(m=>map.removeLayer(m));markers=[];
+  if(routeLine){map.removeLayer(routeLine);routeLine=null;}
+  const pc=document.getElementById('panel-content'),db=document.getElementById('dist-bar');
+  if(!stops.length){pc.innerHTML='<div class="empty">Noch keine Stops.<br>Klicke auf die Karte<br>oder suche einen Ort.</div>';db.style.display='none';return;}
+  pc.innerHTML='<div class="sec-label">Deine Route</div>';
+  stops.forEach((s,i)=>{
+    const m=L.marker([s.lat,s.lon],{icon:mkIcon(i+1)}).addTo(map).bindPopup(`<b>${s.name}</b>`);markers.push(m);
+    const el=document.createElement('div');el.className='stop-item';el.draggable=true;
+    el.innerHTML=`<div class="stop-num">${i+1}</div><div class="stop-body"><div style="display:flex;align-items:center;gap:4px;"><div class="stop-name" title="${s.name}">${s.name}</div><button class="stop-del" data-i="${i}">×</button></div><div class="stop-acts"><button class="mini-btn poi-btn" data-i="${i}">${s.poi?'▲ POIs':'▼ Top 3 Nearby'}</button></div>${s.poi?`<div class="poi-list" data-i="${i}"><div style="font-size:11px;color:var(--text-3);padding:4px 0;">Lade...</div></div>`:''}</div>`;
+    el.addEventListener('dragstart',()=>{dragSrc=i;el.style.opacity='0.5';});
+    el.addEventListener('dragend',()=>{el.style.opacity='1';document.querySelectorAll('.stop-item').forEach(e=>e.classList.remove('drag-over'));});
+    el.addEventListener('dragover',e=>{e.preventDefault();el.classList.add('drag-over');});
+    el.addEventListener('dragleave',()=>el.classList.remove('drag-over'));
+    el.addEventListener('drop',e=>{e.preventDefault();if(dragSrc!=null&&dragSrc!==i){const mv=stops.splice(dragSrc,1)[0];stops.splice(i,0,mv);SS('stops',stops);renderMap();}});
+    el.querySelector('.stop-del').addEventListener('click',e=>{stops.splice(+e.target.dataset.i,1);SS('stops',stops);renderMap();updateBadges();});
+    el.querySelector('.poi-btn').addEventListener('click',e=>{const idx=+e.target.dataset.i;stops[idx].poi=!stops[idx].poi;SS('stops',stops);renderMap();if(stops[idx].poi)fetchPOI(stops[idx],idx);});
+    pc.appendChild(el);if(s.poi)fetchPOI(s,i);
+  });
+  if(stops.length>1){routeLine=L.polyline(stops.map(s=>[s.lat,s.lon]),{color:'#185FA5',weight:3,dashArray:'8,6',opacity:0.7}).addTo(map);let d=0;for(let i=1;i<stops.length;i++)d+=calcDist([stops[i-1].lat,stops[i-1].lon],[stops[i].lat,stops[i].lon]);db.style.display='block';db.innerHTML=`Gesamtstrecke: ca. <b>${Math.round(d)} km</b>`;}
+  else db.style.display='none';SS('stops',stops);
+}
+async function fetchPOI(stop,idx){
+  const el=document.querySelector(`.poi-list[data-i="${idx}"]`);if(!el)return;
+  try{const q=`[out:json][timeout:8];(node["tourism"](around:1500,${stop.lat},${stop.lon});node["amenity"~"restaurant|cafe|museum"](around:1500,${stop.lat},${stop.lon}););out 20;`;const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q)});const d=await r.json();const seen=new Set();const pois=d.elements.filter(e=>{const n=e.tags?.name;if(!n||seen.has(n))return false;seen.add(n);return true;}).slice(0,3);
+  if(!pois.length){el.innerHTML='<div style="font-size:11px;color:var(--text-3);padding:4px 0;">Keine Treffer in der Nähe.</div>';return;}
+  el.innerHTML=pois.map(p=>{const t=p.tags?.tourism||p.tags?.amenity||'';return`<div class="poi-item"><span class="poi-emoji">${poiEmoji(t)}</span><div><div class="poi-name">${p.tags.name}</div><div class="poi-type">${t}</div></div><button class="poi-add" data-lat="${p.lat}" data-lon="${p.lon}" data-name="${p.tags.name}">+ Stop</button></div>`;}).join('');
+  el.querySelectorAll('.poi-add').forEach(b=>b.addEventListener('click',()=>{stops.push({name:b.dataset.name,lat:+b.dataset.lat,lon:+b.dataset.lon});SS('stops',stops);renderMap();updateBadges();b.textContent='✓';b.disabled=true;}));}
+  catch(e){el.innerHTML='<div style="font-size:11px;color:var(--text-3);">Fehler.</div>';}
+}
+function renderChecklist(items,saveKey,cats,color){
+  const pc=document.getElementById('panel-content');const done=items.filter(i=>i.done).length,total=items.length,pct=total?Math.round(done/total*100):0;
+  pc.innerHTML=`<div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color};"></div></div><div class="prog-label">${done} von ${total} erledigt · ${pct}%</div>`;
+  const grouped={};items.forEach(it=>{(grouped[it.cat]=grouped[it.cat]||[]).push(it);});
+  Object.entries(grouped).forEach(([cat,its])=>{const lbl=document.createElement('div');lbl.className='sec-label';lbl.textContent=cat;pc.appendChild(lbl);its.forEach(it=>{const el=document.createElement('div');el.className='check-item';el.innerHTML=`<input type="checkbox" id="ci${it.id}" ${it.done?'checked':''}><label class="check-label${it.done?' done':''}" for="ci${it.id}">${it.text}</label><button class="check-del" data-id="${it.id}">×</button>`;el.querySelector('input').addEventListener('change',e=>{it.done=e.target.checked;SS(saveKey,items);renderChecklist(items,saveKey,cats,color);updateBadges();});el.querySelector('.check-del').addEventListener('click',()=>{const idx=items.findIndex(i=>i.id===it.id);items.splice(idx,1);SS(saveKey,items);renderChecklist(items,saveKey,cats,color);updateBadges();});pc.appendChild(el);});});
+  const ar=document.createElement('div');ar.className='add-row';ar.innerHTML=`<select class="add-sel">${cats.map(c=>`<option>${c}</option>`).join('')}</select><input class="add-inp" type="text" placeholder="Hinzufügen..."/><button class="add-btn">+</button>`;ar.querySelector('.add-btn').addEventListener('click',()=>{const text=ar.querySelector('.add-inp').value.trim();if(!text)return;const cat=ar.querySelector('.add-sel').value;const nid=Math.max(0,...items.map(i=>i.id))+1;items.push({id:nid,cat,text,done:false});SS(saveKey,items);renderChecklist(items,saveKey,cats,color);updateBadges();});ar.querySelector('.add-inp').addEventListener('keydown',e=>{if(e.key==='Enter')ar.querySelector('.add-btn').click();});pc.appendChild(ar);
+}
+function renderActivities(){
+  const pc=document.getElementById('panel-content');pc.innerHTML='';
+  if(actItems.length){actItems.forEach((a,i)=>{const el=document.createElement('div');el.className='check-item';el.innerHTML=`<input type="checkbox" id="ac${i}" ${a.done?'checked':''}><label class="check-label${a.done?' done':''}" for="ac${i}">${a.text}${a.stop?` <span style="font-size:11px;color:var(--text-3);">@ ${a.stop}</span>`:''}</label><button class="check-del" data-i="${i}">×</button>`;el.querySelector('input').addEventListener('change',e=>{a.done=e.target.checked;SS('acts',actItems);renderActivities();updateBadges();});el.querySelector('.check-del').addEventListener('click',()=>{actItems.splice(i,1);SS('acts',actItems);renderActivities();updateBadges();});pc.appendChild(el);});}
+  else pc.innerHTML='<div class="empty">Noch keine Aktivitäten geplant.</div>';
+  const ar=document.createElement('div');ar.className='add-row';ar.innerHTML=`${stops.length?`<select class="add-sel"><option value="">Alle</option>${stops.map(s=>`<option>${s.name}</option>`).join('')}</select>`:''}<input class="add-inp" type="text" placeholder="Aktivität hinzufügen..."/><button class="add-btn">+</button>`;ar.querySelector('.add-btn').addEventListener('click',()=>{const text=ar.querySelector('.add-inp').value.trim();if(!text)return;const stop=ar.querySelector('.add-sel')?.value||'';actItems.push({text,stop,done:false});SS('acts',actItems);renderActivities();updateBadges();});ar.querySelector('.add-inp').addEventListener('keydown',e=>{if(e.key==='Enter')ar.querySelector('.add-btn').click();});pc.appendChild(ar);
+}
+function renderDocs(){
+  const pc=document.getElementById('panel-content');pc.innerHTML='<div class="sec-label">Status deiner Reisedokumente</div>';
+  docItems.forEach((d,i)=>{const el=document.createElement('div');el.className='doc-card';const pillClass=d.status==='ok'?'s-ok':d.status==='warn'?'s-warn':'s-none';const pillText=d.status==='ok'?'Erledigt':d.status==='warn'?'Prüfen':'Ausstehend';el.innerHTML=`<div class="doc-icon-wrap" style="background:var(--coral-light);">${d.icon}</div><div class="doc-info"><div class="doc-name">${d.name}</div><div class="doc-note">${d.note||'Keine Notiz'}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;"><span class="status-pill ${pillClass}">${pillText}</span><select class="doc-status-sel" data-i="${i}"><option value="none" ${d.status==='none'?'selected':''}>Ausstehend</option><option value="ok" ${d.status==='ok'?'selected':''}>Erledigt</option><option value="warn" ${d.status==='warn'?'selected':''}>Prüfen</option></select></div>`;el.querySelector('select').addEventListener('change',e=>{e.stopPropagation();docItems[i].status=e.target.value;SS('docs',docItems);renderDocs();});el.addEventListener('click',e=>{if(e.target.tagName==='SELECT')return;openModal(`Notiz: ${d.name}`,d.note,v=>{docItems[i].note=v||d.note;SS('docs',docItems);renderDocs();});});pc.appendChild(el);});
+}
+function renderVersions(){
+  const pc=document.getElementById('panel-content');if(!versions.length){pc.innerHTML='<div class="empty">Noch keine gespeicherten Routen.</div>';return;}
+  pc.innerHTML='<div class="sec-label">Gespeicherte Routen</div>';
+  versions.forEach((v,i)=>{const el=document.createElement('div');el.className='ver-card';const date=new Date(v.savedAt).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'});el.innerHTML=`<div class="ver-name">${v.name}</div><div class="ver-meta">${date} · ${v.stops.length} Stops</div><div class="ver-stops">${v.stops.map(s=>s.name).join(' → ')}</div><div class="ver-acts"><button class="v-btn v-load" data-i="${i}">Laden</button><button class="v-btn v-del" data-i="${i}">Löschen</button></div>`;el.querySelector('.v-load').addEventListener('click',()=>{stops=JSON.parse(JSON.stringify(v.stops));SS('stops',stops);switchMod('route');renderMap();updateBadges();if(stops.length)map.fitBounds(stops.map(s=>[s.lat,s.lon]),{padding:[40,40]});});el.querySelector('.v-del').addEventListener('click',()=>{versions.splice(i,1);SS('versions',versions);renderVersions();});pc.appendChild(el);});
+}
+async function fetchAI(){
+  if(!stops.length){alert('Füge zuerst Stops hinzu.');return;}
+  const btn=document.getElementById('ai-btn');btn.innerHTML='⏳ Lädt...';btn.disabled=true;
+  document.getElementById('panel-content').innerHTML='<div class="empty">KI analysiert deine Route...</div>';
+  const names=stops.map(s=>s.name).join(' → ');
+  try{const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:900,system:'Du bist ein enthusiastischer Reiseberater. Antworte auf Deutsch. Kein Markdown.',messages:[{role:'user',content:`Route: ${names}. Gib 3 Empfehlungen als JSON: [{"titel":"...","tipp":"...","emoji":"...","farbe":"#hex"}]. Nur JSON.`}]})});const data=await r.json();const tips=JSON.parse((data.content?.[0]?.text||'[]').replace(/```json|```/g,'').trim());const pc=document.getElementById('panel-content');pc.innerHTML='<div class="sec-label">KI-Empfehlungen</div>';tips.forEach(t=>{const c=t.farbe||'#185FA5';const el=document.createElement('div');el.className='ai-card';el.style.cssText=`border-left-color:${c};background:${c}18;`;el.innerHTML=`<div class="ai-title" style="color:${c};">${t.emoji} ${t.titel}</div><div class="ai-text">${t.tipp}</div>`;pc.appendChild(el);});}
+  catch(e){document.getElementById('panel-content').innerHTML='<div class="empty">Fehler beim Laden.</div>';}
+  btn.innerHTML='✦ KI-Tipps';btn.disabled=false;
+}
+function switchMod(mod){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.mod===mod));
+  const mc=document.getElementById('map-col'),p=document.getElementById('panel'),sa=document.getElementById('search-area'),pf=document.getElementById('panel-footer'),db=document.getElementById('dist-bar');
+  if(mod==='route'){mc.classList.add('visible');p.classList.remove('full');sa.style.display='';pf.style.display='';renderMap();}
+  else{mc.classList.remove('visible');p.classList.add('full');sa.style.display='none';pf.style.display='none';db.style.display='none';}
+  if(mod==='pack')renderChecklist(packItems,'pack',['Kleidung','Hygiene','Dokumente','Technik','Sonstiges'],'var(--amber)');
+  if(mod==='todos')renderChecklist(todoItems,'todos',['Vor der Reise','Unterwegs','Nach der Reise'],'var(--green)');
+  if(mod==='activities')renderActivities();
+  if(mod==='docs')renderDocs();
+  if(mod==='versions')renderVersions();
+}
+document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>switchMod(n.dataset.mod)));
+map.on('click',async e=>{const{lat,lng}=e.latlng;let name=`Stop ${stops.length+1}`;try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);const d=await r.json();name=d.address?.city||d.address?.town||d.address?.village||d.address?.suburb||d.name||name;}catch(e){}stops.push({name,lat,lon:lng});SS('stops',stops);renderMap();updateBadges();if(stops.length===1)map.setView([lat,lng],10);});
+let stimer;const si=document.getElementById('search-input'),sr=document.getElementById('search-results');
+si.addEventListener('input',()=>{clearTimeout(stimer);const q=si.value.trim();if(q.length<3){sr.style.display='none';return;}stimer=setTimeout(async()=>{try{const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`);const res=await r.json();sr.innerHTML='';if(!res.length){sr.style.display='none';return;}res.forEach(x=>{const el=document.createElement('div');el.className='sr';el.textContent=x.display_name.split(',').slice(0,3).join(', ');el.addEventListener('click',()=>{stops.push({name:x.display_name.split(',')[0],lat:+x.lat,lon:+x.lon});SS('stops',stops);renderMap();updateBadges();map.setView([x.lat,x.lon],12);si.value='';sr.style.display='none';});sr.appendChild(el);});sr.style.display='block';}catch(e){}},400);});
+document.addEventListener('click',e=>{if(!si.contains(e.target)&&!sr.contains(e.target))sr.style.display='none';});
+document.getElementById('save-btn').addEventListener('click',()=>{if(!stops.length){alert('Füge zuerst Stops hinzu.');return;}const tn=document.getElementById('trip-name').value.trim();const sug=tn||(stops.length>=2?`${stops[0].name} → ${stops[stops.length-1].name}`:stops[0].name);openModal('Route speichern',sug,name=>{if(!name)return;versions.unshift({name,stops:JSON.parse(JSON.stringify(stops)),savedAt:new Date().toISOString()});SS('versions',versions);switchMod('versions');});});
+document.getElementById('clear-btn').addEventListener('click',()=>{stops=[];SS('stops',stops);renderMap();updateBadges();});
+document.getElementById('ai-btn').addEventListener('click',fetchAI);
+switchMod('route');updateBadges();
+</script>
+</body>
+</html>
